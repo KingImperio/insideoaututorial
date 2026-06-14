@@ -772,6 +772,7 @@ async function doLogin() {
       body: JSON.stringify({ email, password }),
     });
     $('loginOverlay').classList.add('hidden');
+    document.body.style.overflow = '';
     await enterAsStudent(data);
   } catch (e) {
     err.textContent = e.message || 'Sign in failed.';
@@ -1258,6 +1259,9 @@ function escapeHtml(s) {
 
 // ── Wire events ───────────────────────────────────────────────────────────────
 function wireEvents() {
+  // Lock body scroll while login overlay is visible
+  document.body.style.overflow = 'hidden';
+
   $('subjectSelect').addEventListener('change', (e) => selectSubject(e.target.value));
   $('studentSelect').addEventListener('change', (e) => selectDemoStudent(e.target.value));
 
