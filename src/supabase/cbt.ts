@@ -58,7 +58,10 @@ export async function verifyToken(token: string): Promise<{ userId: string } | n
 
 /** Read a student's profile (access flag, student id, chosen subjects, etc.). */
 export async function getProfile(userId: string): Promise<CbtProfile | null> {
-  const { data, error } = await client
+  // Prefer adminClient (service role key) so RLS never blocks a server-side read.
+  // Falls back to anon client (e.g. local dev without service role key set).
+  const c = adminClient ?? client;
+  const { data, error } = await c
     .from('profiles')
     .select(
       'id, student_id, full_name, email, has_post_utme_access, is_admin, selected_university, post_utme_subjects',
