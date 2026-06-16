@@ -66,6 +66,10 @@ export interface SubmitResult {
   graded: boolean;
 }
 
+function lessonOpenTime(lesson: DailyLesson): Date {
+  return new Date(lesson.goes_live_at ?? lesson.generated_at);
+}
+
 /** Student: submit assignment answer and auto-grade all pending submissions in one batch call. */
 export async function submitAssignment(
   studentId: string,
@@ -78,14 +82,23 @@ export async function submitAssignment(
   const text = submissionText.trim();
   if (!text && !fileUrl) throw new GroupClassError('Submission cannot be empty.');
 
-  const lesson = await repo.getTodayLesson(subject, department, date);
-  if (!lesson) throw new GroupClassError("Today's class for this subject hasn't been opened yet.");
+  const lesson = await repo.getActiveLesson(subject, department);
+  if (!lesson) throw new GroupClassError("No class has been opened for this subject yet.");
+
+  // Assignment deadline: 11 hours after class opened
+  const openedAt = lessonOpenTime(lesson);
+  const deadline = new Date(openedAt.getTime() + 11 * 60 * 60 * 1000);
+  if (Date.now() > deadline.getTime()) {
+    throw new GroupClassError(
+      `Assignment deadline has passed. Submissions closed at ${deadline.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })} on ${deadline.toLocaleDateString('en-NG')}.`,
+    );
+  }
 
   await repo.saveSubmission({
     student_id: studentId,
     subject,
     day_number: lesson.day_number,
-    lesson_date: date,
+    lesson_date: lesson.lesson_date,
     submission_type: 'assignment',
     submission_text: text,
     submission_file_url: fileUrl ?? null,
@@ -108,24 +121,32 @@ export async function submitClasswork(
   submissionText: string,
   fileUrl?: string | null,
 ): Promise<SubmitResult> {
-  const date = todayWAT();
   const text = submissionText.trim();
   if (!text && !fileUrl) throw new GroupClassError('Classwork submission cannot be empty.');
 
-  const lesson = await repo.getTodayLesson(subject, department, date);
-  if (!lesson) throw new GroupClassError("Today's class for this subject hasn't been opened yet.");
+  const lesson = await repo.getActiveLesson(subject, department);
+  if (!lesson) throw new GroupClassError("No class has been opened for this subject yet.");
+
+  // Classwork deadline: 1 hour after class opened (must be done during class)
+  const openedAt = lessonOpenTime(lesson);
+  const classEnd = new Date(openedAt.getTime() + 60 * 60 * 1000);
+  if (Date.now() > classEnd.getTime()) {
+    throw new GroupClassError(
+      `Class time has ended. Classwork was due by ${classEnd.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}. You can still submit the assignment (open for 11 hours).`,
+    );
+  }
 
   await repo.saveSubmission({
     student_id: studentId,
     subject,
     day_number: lesson.day_number,
-    lesson_date: date,
+    lesson_date: lesson.lesson_date,
     submission_type: 'classwork',
     submission_text: text,
     submission_file_url: fileUrl ?? null,
   });
 
-  const updated = await repo.getSubmission(studentId, subject, date, 'classwork');
+  const updated = await repo.getSubmission(studentId, subject, lesson.lesson_date, 'classwork');
   return {
     submission: updated!,
     score: updated?.score ?? null,

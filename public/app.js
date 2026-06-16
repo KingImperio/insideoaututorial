@@ -1286,6 +1286,7 @@ function setGradeTab(type) {
   state.gradeType = type;
   $('gradeTabClasswork').className = 'grade-tab' + (type === 'classwork' ? ' grade-tab-active' : '');
   $('gradeTabAssignment').className = 'grade-tab' + (type === 'assignment' ? ' grade-tab-active' : '');
+  $('gradeTabAbsent').className = 'grade-tab' + (type === 'absent' ? ' grade-tab-active' : '');
 }
 
 function renderGradeList(submissions, type) {
@@ -1592,7 +1593,164 @@ async function resetAllLessons() {
   }
 }
 
-//  Utilities 
+//  Student: My Progress
+async function openProgressModal() {
+  $('progressModal').classList.remove('hidden');
+  const list = $('progressList');
+  list.innerHTML = '<p style="color:var(--muted)">Loading...</p>';
+  if (!state.student) {
+    list.innerHTML = '<p style="color:var(--muted)">Not logged in as a student.</p>';
+    return;
+  }
+  try {
+    const { overview } = await api(`/api/progress/overview?studentId=${encodeURIComponent(state.student.id)}`);
+    if (!overview || !overview.length) {
+      list.innerHTML = '<p style="color:var(--muted)">No progress data yet.</p>';
+      return;
+    }
+    list.innerHTML = overview.map((s) => {
+      const pct = s.totalClassDays ? Math.round(s.daysAttended / s.totalClassDays * 100) : 0;
+      return `<div class="grade-row-card">
+        <div class="grade-row-header">
+          <span class="grade-row-id">${escapeHtml(s.label || s.subject)}</span>
+          <span class="grade-row-badge">${s.daysAttended}/${s.totalClassDays} days</span>
+        </div>
+        <div style="font-size:13px;color:var(--muted);">
+          ${s.avgScore !== null ? `Avg score: <strong style="color:var(--white)">${s.avgScore}%</strong>` : 'No scores yet'}
+          ${s.lastDayAttended ? ` &bull; Last: Day ${s.lastDayAttended}` : ''}
+        </div>
+        <div style="background:var(--srf-h);border-radius:6px;height:6px;overflow:hidden;margin-top:4px;">
+          <div style="height:100%;width:${pct}%;background:var(--purple);border-radius:6px;transition:width 0.4s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = `<p style="color:var(--red)">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+//  Student: Past Classes
+async function openPastClassesModal() {
+  $('pastClassesModal').classList.remove('hidden');
+  $('pastClassesLesson').classList.add('hidden');
+  $('pastClassesLesson').innerHTML = '';
+  $('pastClassesList').innerHTML = '<p style="color:var(--muted)">Loading...</p>';
+
+  const bar = $('pastClassesSubjectBar');
+  bar.innerHTML = '';
+
+  const subjects = state.subjects || [];
+  if (!subjects.length) {
+    $('pastClassesList').innerHTML = '<p style="color:var(--muted)">No subjects available.</p>';
+    return;
+  }
+
+  subjects.forEach((s, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'grade-tab' + (i === 0 ? ' grade-tab-active' : '');
+    btn.textContent = s.label || s.subject;
+    btn.addEventListener('click', () => {
+      bar.querySelectorAll('.grade-tab').forEach((b) => b.classList.remove('grade-tab-active'));
+      btn.classList.add('grade-tab-active');
+      $('pastClassesLesson').classList.add('hidden');
+      $('pastClassesLesson').innerHTML = '';
+      loadPastClassesForSubject(s.subject, s.department || 'general');
+    });
+    bar.appendChild(btn);
+  });
+
+  loadPastClassesForSubject(subjects[0].subject, subjects[0].department || 'general');
+}
+
+async function loadPastClassesForSubject(subject, department) {
+  $('pastClassesList').innerHTML = '<p style="color:var(--muted)">Loading...</p>';
+  try {
+    const { lessons } = await api(`/api/lessons/archive?subject=${encodeURIComponent(subject)}&department=${encodeURIComponent(department)}`);
+    if (!lessons || !lessons.length) {
+      $('pastClassesList').innerHTML = '<p style="color:var(--muted)">No past classes for this subject yet.</p>';
+      return;
+    }
+    const list = $('pastClassesList');
+    list.innerHTML = '';
+    lessons.forEach((l) => {
+      const card = document.createElement('div');
+      card.className = 'grade-row-card';
+      card.style.cursor = 'pointer';
+      card.innerHTML = `<div class="grade-row-header">
+        <span class="grade-row-id">Day ${l.day_number}: ${escapeHtml(l.topic || '')}</span>
+        <span class="grade-row-badge-muted" style="font-size:12px;padding:2px 10px;border-radius:999px;background:var(--srf-h);color:var(--dim);">${l.lesson_date || ''}</span>
+      </div>`;
+      card.addEventListener('click', () => loadPastLesson(subject, department, l.day_number));
+      list.appendChild(card);
+    });
+  } catch (e) {
+    $('pastClassesList').innerHTML = `<p style="color:var(--red)">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+async function loadPastLesson(subject, department, day) {
+  const lessonEl = $('pastClassesLesson');
+  lessonEl.classList.remove('hidden');
+  lessonEl.innerHTML = '<p style="color:var(--muted)">Loading lesson...</p>';
+  lessonEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  try {
+    const { lesson } = await api(`/api/lessons/archive?subject=${encodeURIComponent(subject)}&department=${encodeURIComponent(department)}&day=${day}`);
+    if (!lesson) {
+      lessonEl.innerHTML = '<p style="color:var(--muted)">Lesson not found.</p>';
+      return;
+    }
+    const blocks = parseSections(lesson.lesson_content);
+    let html = `<div style="border-top:1px solid var(--brd);padding-top:1rem;">
+      <h3 style="color:var(--white);margin:0 0 1rem;font-size:16px;font-weight:800;">Day ${lesson.day_number}: ${escapeHtml(lesson.topic || '')}</h3>`;
+    for (const block of blocks) {
+      if (block.type === 'section') {
+        block.paragraphs.forEach((p) => {
+          html += `<p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0 0 0.8rem;">${escapeHtml(p)}</p>`;
+        });
+      } else if (block.type === 'check') {
+        html += `<div style="background:var(--srf2,var(--srf));border:1px solid var(--brd);border-radius:8px;padding:12px;margin:12px 0;font-size:13px;color:var(--white);">📝 ${escapeHtml(block.text)}</div>`;
+      }
+    }
+    html += '</div>';
+    lessonEl.innerHTML = html;
+  } catch (e) {
+    lessonEl.innerHTML = `<p style="color:var(--red)">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+//  Admin: Absent students
+async function loadAbsentStudents() {
+  const subject = $('gradeSubjectPick').value;
+  if (!subject) return;
+  const meta = (state.subjects || []).find((s) => s.subject === subject);
+  const department = meta?.department || 'general';
+  $('gradeList').innerHTML = '<p style="color:var(--muted)">Loading absent list...</p>';
+  $('gradeModalMsg').textContent = '';
+  try {
+    const { date, absent } = await api(
+      `/api/admin/absent?subject=${encodeURIComponent(subject)}&department=${encodeURIComponent(department)}`,
+    );
+    if (!absent || !absent.length) {
+      $('gradeList').innerHTML = `<p style="color:#4ade80">All students submitted classwork on ${date || 'today'}!</p>`;
+      return;
+    }
+    const list = $('gradeList');
+    list.innerHTML = `<p style="color:var(--muted);margin-bottom:4px;">${absent.length} student${absent.length > 1 ? 's' : ''} absent on ${date || 'today'}:</p>`;
+    absent.forEach((s) => {
+      const card = document.createElement('div');
+      card.className = 'grade-row-card';
+      card.innerHTML = `<div class="grade-row-header">
+        <span class="grade-row-id">${escapeHtml(s.full_name)}</span>
+        <span style="color:#f87171;font-size:12px;font-weight:800;background:rgba(248,113,113,0.12);padding:2px 10px;border-radius:999px;">ABSENT</span>
+      </div>`;
+      list.appendChild(card);
+    });
+  } catch (e) {
+    $('gradeList').innerHTML = `<p style="color:var(--red)">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+//  Utilities
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1637,12 +1795,19 @@ function wireEvents() {
   $('adminClassBtn').addEventListener('click', openClassModal);
   $('classModalClose').addEventListener('click', () => $('classModal').classList.add('hidden'));
 
+  // Student  My Progress & Past Classes
+  $('myProgressBtn').addEventListener('click', openProgressModal);
+  $('progressModalClose').addEventListener('click', () => $('progressModal').classList.add('hidden'));
+  $('pastClassesBtn').addEventListener('click', openPastClassesModal);
+  $('pastClassesModalClose').addEventListener('click', () => $('pastClassesModal').classList.add('hidden'));
+
   // Admin  Grade modal
   $('adminGradeBtn').addEventListener('click', openGradeModal);
   $('gradeModalClose').addEventListener('click', () => $('gradeModal').classList.add('hidden'));
   $('gradeLoadBtn').addEventListener('click', loadGradeSubmissions);
-  $('gradeTabClasswork').addEventListener('click', () => { setGradeTab('classwork'); });
-  $('gradeTabAssignment').addEventListener('click', () => { setGradeTab('assignment'); });
+  $('gradeTabClasswork').addEventListener('click', () => { setGradeTab('classwork'); loadGradeSubmissions(); });
+  $('gradeTabAssignment').addEventListener('click', () => { setGradeTab('assignment'); loadGradeSubmissions(); });
+  $('gradeTabAbsent').addEventListener('click', () => { setGradeTab('absent'); loadAbsentStudents(); });
 
   // Admin  Questions modal
   $('adminQuestionsBtn').addEventListener('click', openQuestionsModal);

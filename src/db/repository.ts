@@ -290,6 +290,21 @@ export async function resetSubjectLessons(_subject: string, _department: string)
 export async function resetTodayLesson(_subject: string, _department: string, _date: string): Promise<boolean> {
   throw new Error(GROUP_CLASS_ERR);
 }
+export async function getActiveLesson(_subject: string, _department: string): Promise<DailyLesson | null> {
+  throw new Error(GROUP_CLASS_ERR);
+}
+export async function getLessonArchive(_subject: string, _department: string): Promise<Partial<DailyLesson>[]> {
+  throw new Error(GROUP_CLASS_ERR);
+}
+export async function getLessonByDay(_subject: string, _department: string, _day: number): Promise<DailyLesson | null> {
+  throw new Error(GROUP_CLASS_ERR);
+}
+export async function getStudentAttendance(_studentId: string, _subject: string): Promise<{day_number: number; score: number | null; submitted_at: string}[]> {
+  throw new Error(GROUP_CLASS_ERR);
+}
+export async function getAbsentStudents(_date: string, _subject: string, _department: string): Promise<{id: string; full_name: string}[]> {
+  throw new Error(GROUP_CLASS_ERR);
+}
 
 // ── Announcements ────────────────────────────────────────────────────────────
 

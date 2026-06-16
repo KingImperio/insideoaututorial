@@ -549,6 +549,76 @@ export async function uploadSubmissionFile(
   return path;
 }
 
+/** Submission fix: get the most recent live lesson for a subject (not date-locked). */
+export async function getActiveLesson(subject: string, department: string): Promise<DailyLesson | null> {
+  const now = new Date().toISOString();
+  const { data } = await sb
+    .from('tutor_daily_lessons')
+    .select('*')
+    .eq('subject', subject)
+    .eq('department', department)
+    .or(`goes_live_at.is.null,goes_live_at.lte.${now}`)
+    .order('day_number', { ascending: false })
+    .limit(1);
+  return data && data.length ? (data[0] as DailyLesson) : null;
+}
+
+/** Archive: all past live lessons for a subject (metadata only, no full content). */
+export async function getLessonArchive(subject: string, department: string): Promise<Partial<DailyLesson>[]> {
+  const now = new Date().toISOString();
+  const { data } = await sb
+    .from('tutor_daily_lessons')
+    .select('id, day_number, topic, lesson_date, goes_live_at, generated_at')
+    .eq('subject', subject)
+    .eq('department', department)
+    .or(`goes_live_at.is.null,goes_live_at.lte.${now}`)
+    .order('day_number', { ascending: false });
+  return (data ?? []) as Partial<DailyLesson>[];
+}
+
+/** Archive: full content for a specific day. */
+export async function getLessonByDay(subject: string, department: string, day: number): Promise<DailyLesson | null> {
+  const { data } = await sb
+    .from('tutor_daily_lessons')
+    .select('*')
+    .eq('subject', subject)
+    .eq('department', department)
+    .eq('day_number', day)
+    .maybeSingle();
+  return (data as DailyLesson) ?? null;
+}
+
+/** Progress: all classwork submissions for a student+subject (for My Progress panel). */
+export async function getStudentAttendance(studentId: string, subject: string): Promise<{day_number: number; score: number | null; submitted_at: string}[]> {
+  const { data } = await sb
+    .from('tutor_submissions')
+    .select('day_number, score, submitted_at')
+    .eq('student_id', studentId)
+    .eq('subject', subject)
+    .eq('submission_type', 'classwork')
+    .order('day_number', { ascending: true });
+  return (data ?? []) as any[];
+}
+
+/** Admin: students who have NOT submitted classwork for a given date+subject. */
+export async function getAbsentStudents(date: string, subject: string, _department: string): Promise<{id: string; full_name: string}[]> {
+  const { data: allStudents } = await sb
+    .from('tutor_students')
+    .select('id, full_name')
+    .order('full_name', { ascending: true });
+  if (!allStudents?.length) return [];
+
+  const { data: submitted } = await sb
+    .from('tutor_submissions')
+    .select('student_id')
+    .eq('subject', subject)
+    .eq('lesson_date', date)
+    .eq('submission_type', 'classwork');
+
+  const submittedIds = new Set((submitted ?? []).map((r: any) => r.student_id));
+  return (allStudents as any[]).filter((s) => !submittedIds.has(s.id));
+}
+
 export async function getSubmissionFileUrl(path: string): Promise<string> {
   const { data, error } = await sb.storage
     .from('tutor-submissions')

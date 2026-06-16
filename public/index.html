@@ -102,6 +102,10 @@
         <div class="status-row"><span>Topic</span><strong id="statTopic">&mdash;</strong></div>
         <div class="status-row"><span>Score</span><strong id="statScore">&mdash;</strong></div>
         <div class="status-row"><span>Submitted</span><strong id="statSubmitted">&mdash;</strong></div>
+        <div class="status-actions">
+          <button class="link-btn" id="myProgressBtn">📊 My Progress</button>
+          <button class="link-btn" id="pastClassesBtn">📖 Past Classes</button>
+        </div>
       </section>
 
       <section class="card announce-card">
@@ -288,19 +292,44 @@
         <button id="gradeModalClose" class="modal-close" aria-label="Close">&times;</button>
       </div>
       <p class="modal-sub">
-        Review each student's answer and enter a score (010) with brief feedback. Hit Save for each row.
+        Review each student's answer and enter a score (0–10) with brief feedback. Hit Save for each row.
       </p>
       <div class="grade-picker-row">
         <label class="field-label" for="gradeSubjectPick">Subject</label>
         <select id="gradeSubjectPick" class="select grade-subject-select"></select>
         <div class="grade-type-tabs">
-          <button id="gradeTabClasswork" class="grade-tab grade-tab-active" data-type="classwork"> Classwork</button>
-          <button id="gradeTabAssignment" class="grade-tab" data-type="assignment"> Assignment</button>
+          <button id="gradeTabClasswork" class="grade-tab grade-tab-active" data-type="classwork">✏️ Classwork</button>
+          <button id="gradeTabAssignment" class="grade-tab" data-type="assignment">📝 Assignment</button>
+          <button id="gradeTabAbsent" class="grade-tab" data-type="absent">🚨 Absent</button>
         </div>
-        <button id="gradeLoadBtn" class="btn btn-secondary btn-sm">Load submissions</button>
+        <button id="gradeLoadBtn" class="btn btn-secondary btn-sm">Load</button>
       </div>
       <div id="gradeList" class="grade-list"></div>
       <div id="gradeModalMsg" class="modal-msg"></div>
+    </div>
+  </div>
+
+  <!-- Student: My Progress modal -->
+  <div id="progressModal" class="modal-overlay hidden">
+    <div class="modal-box modal-box-wide">
+      <div class="modal-head">
+        <h2>📊 My Progress</h2>
+        <button id="progressModalClose" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div id="progressList" class="grade-list"></div>
+    </div>
+  </div>
+
+  <!-- Student: Past Classes modal -->
+  <div id="pastClassesModal" class="modal-overlay hidden">
+    <div class="modal-box modal-box-wide">
+      <div class="modal-head">
+        <h2>📖 Past Classes</h2>
+        <button id="pastClassesModalClose" class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div id="pastClassesSubjectBar" style="margin-bottom:1rem;display:flex;gap:0.5rem;flex-wrap:wrap;"></div>
+      <div id="pastClassesList" class="grade-list"></div>
+      <div id="pastClassesLesson" class="hidden" style="margin-top:1rem;"></div>
     </div>
   </div>
 
@@ -361,6 +390,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=14"></script>
+  <script src="/app.js?v=15"></script>
 </body>
 </html>

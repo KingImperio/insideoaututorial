@@ -686,6 +686,71 @@ app.post(
   }),
 );
 
+// Student: get list of all past lessons for a subject (for Past Classes panel).
+app.get(
+  '/api/lessons/archive',
+  wrap(async (req, res) => {
+    const subject = String(req.query.subject ?? '').trim().toLowerCase();
+    const department = String(req.query.department ?? 'general').trim().toLowerCase();
+    const day = req.query.day ? Number(req.query.day) : null;
+    if (!subject) { res.status(400).json({ error: 'subject is required.' }); return; }
+    if (day !== null) {
+      const lesson = await repo.getLessonByDay(subject, department, day);
+      res.json({ lesson: lesson ?? null });
+    } else {
+      const lessons = await repo.getLessonArchive(subject, department);
+      res.json({ lessons });
+    }
+  }),
+);
+
+// Student: progress overview — all subjects, days attended, avg score.
+app.get(
+  '/api/progress/overview',
+  wrap(async (req, res) => {
+    const studentId = String(req.query.studentId ?? '').trim();
+    if (!studentId) { res.status(400).json({ error: 'studentId is required.' }); return; }
+    const student = await repo.getStudent(studentId);
+    if (!student) { res.status(404).json({ error: 'Student not found.' }); return; }
+    const subjectKeys = await repo.listSubjects(student.department);
+    const overview = await Promise.all(
+      subjectKeys.map(async (subject) => {
+        const { inferTrack, lessonDept, subjectLabel } = await import('./subjects');
+        const track = inferTrack([subject]);
+        const dept = lessonDept(subject, track);
+        const [archive, attendance] = await Promise.all([
+          repo.getLessonArchive(subject, dept),
+          repo.getStudentAttendance(studentId, subject),
+        ]);
+        const scores = attendance.map((a) => a.score).filter((s): s is number => s !== null);
+        return {
+          subject,
+          label: subjectLabel(subject),
+          totalClassDays: archive.length,
+          daysAttended: attendance.length,
+          avgScore: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : null,
+          lastDayAttended: attendance.length ? attendance[attendance.length - 1].day_number : null,
+        };
+      }),
+    );
+    res.json({ overview });
+  }),
+);
+
+// Admin: get students who missed class (no classwork submission) for a date+subject.
+app.get(
+  '/api/admin/absent',
+  wrap(async (req, res) => {
+    if (!(await requireAdmin(req))) { res.status(403).json({ error: 'Admin only.' }); return; }
+    const date = String(req.query.date ?? todayWAT());
+    const subject = String(req.query.subject ?? '').trim().toLowerCase();
+    const department = String(req.query.department ?? '').trim().toLowerCase();
+    if (!subject || !department) { res.status(400).json({ error: 'subject and department are required.' }); return; }
+    const absent = await repo.getAbsentStudents(date, subject, department);
+    res.json({ date, subject, absent });
+  }),
+);
+
 // Admin: delete all lesson records so next generate starts from Day 1.
 app.delete(
   '/api/admin/reset-lessons',
