@@ -34,6 +34,7 @@
 html, body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
   background-color: var(--bg);
   color: var(--white);
   font-family: var(--font);
@@ -301,6 +302,7 @@ body.s-dark {
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 820px) {
+  html, body { overflow: auto; }
   .layout {
     grid-template-columns: 1fr;
     height: auto;
@@ -377,6 +379,7 @@ body.s-dark {
 }
 .modal-box {
   width: 100%; max-width: 480px;
+  max-height: 90vh; overflow-y: auto;
   background: var(--srf); border: 1px solid var(--brd); border-radius: 20px; padding: 26px;
   backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
