@@ -37,11 +37,9 @@ export const CONFIG = {
   // These are the app's PUBLIC client values (already shipped in the CBT PWA), so
   // they are safe defaults; override via env if the project moves.
   cbt: {
-    url: process.env.CBT_SUPABASE_URL?.trim() || 'https://zrkkurxfadlilwezqnxf.supabase.co',
-    anonKey:
-      process.env.CBT_SUPABASE_ANON_KEY?.trim() ||
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpya2t1cnhmYWRsaWx3ZXpxbnhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTA4MDMsImV4cCI6MjA5MjQ2NjgwM30.yiR5EqMVp_SAefEuaxN8yVlP-hwfz6NJWU_TGFb7sfY',
-    appUrl: process.env.CBT_APP_URL?.trim() || 'https://insideoau.vercel.app',
+    url: process.env.CBT_SUPABASE_URL?.trim() || '',
+    anonKey: process.env.CBT_SUPABASE_ANON_KEY?.trim() || '',
+    appUrl: process.env.CBT_APP_URL?.trim() || '',
     // Server-side only — used by the tutor's Supabase data store (TUTOR_STORE=supabase).
     serviceRoleKey: process.env.CBT_SERVICE_ROLE_KEY?.trim() || '',
   },

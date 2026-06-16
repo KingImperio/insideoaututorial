@@ -21,7 +21,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
-  const res = await fetch(path, { headers, ...opts });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  const res = await fetch(path, { headers, signal: controller.signal, ...opts }).finally(() => clearTimeout(timeout));
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;

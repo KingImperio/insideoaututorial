@@ -1,4 +1,6 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import katex from 'katex';
 import { AI_SOURCE, CONFIG } from './config';
 import { repo } from './db';
@@ -33,7 +35,17 @@ function enrichLesson(lesson: any) {
 }
 
 const app = express();
+app.use(helmet());
 app.use(express.json({ limit: '20mb' }));
+
+// Rate limiter: 10 login attempts per IP per 15 minutes.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts. Try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Small helper so async route errors land in the error middleware.
 const wrap =
@@ -246,6 +258,7 @@ async function buildSessionPayload(userId: string, token: string) {
 
 app.post(
   '/api/auth/login',
+  loginLimiter,
   wrap(async (req, res) => {
     const email = String(req.body?.email ?? '').trim();
     const password = String(req.body?.password ?? '');
@@ -894,9 +907,8 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     res.status(400).json({ error: err.message });
     return;
   }
-  const message = err instanceof Error ? err.message : 'Unexpected server error.';
   console.error('[tutor] request failed:', err);
-  res.status(502).json({ error: message });
+  res.status(502).json({ error: 'Internal server error.' });
 });
 
 app.listen(CONFIG.port, () => {
