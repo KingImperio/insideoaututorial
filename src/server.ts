@@ -1,10 +1,36 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
+import katex from 'katex';
 import { AI_SOURCE, CONFIG } from './config';
 import { repo } from './db';
 import { ClassroomError, sendMessage, startSession } from './engine/classroom';
 import { GroupClassError, openClass, submitAssignment, submitClasswork } from './engine/groupClass';
 import * as cbt from './supabase/cbt';
 import { ALL_SUBJECT_KEYS, POSTUTME_DEPT, TRACKS, inferTrack, lessonDept, subjectLabel } from './subjects';
+
+// ── Server-side LaTeX rendering ───────────────────────────────────────────────
+function _esc(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function renderMath(text: string): string {
+  const parts: string[] = [];
+  let last = 0;
+  const re = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(_esc(text.slice(last, m.index)));
+    const display = m[1].startsWith('$$');
+    const latex = display ? m[1].slice(2, -2).trim() : m[1].slice(1, -1).trim();
+    try {
+      parts.push(katex.renderToString(latex, { displayMode: display, throwOnError: false, output: 'html' }));
+    } catch { parts.push(_esc(m[1])); }
+    last = m.index + m[1].length;
+  }
+  if (last < text.length) parts.push(_esc(text.slice(last)));
+  return parts.join('');
+}
+function enrichLesson(lesson: any) {
+  return lesson ? { ...lesson, lesson_content_html: renderMath(lesson.lesson_content) } : null;
+}
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
@@ -455,7 +481,7 @@ app.get(
     }
     const date = String(req.query.date ?? todayWAT());
     const lesson = await repo.getLiveTodayLesson(subject, department, date);
-    res.json({ lesson: lesson ?? null });
+    res.json({ lesson: enrichLesson(lesson) });
   }),
 );
 
@@ -696,7 +722,7 @@ app.get(
     if (!subject) { res.status(400).json({ error: 'subject is required.' }); return; }
     if (day !== null) {
       const lesson = await repo.getLessonByDay(subject, department, day);
-      res.json({ lesson: lesson ?? null });
+      res.json({ lesson: enrichLesson(lesson) });
     } else {
       const lessons = await repo.getLessonArchive(subject, department);
       res.json({ lessons });
@@ -815,12 +841,6 @@ app.delete(
 );
 
 // ── Static web client ────────────────────────────────────────────────────────
-
-// Serve KaTeX from local node_modules so students don't depend on a CDN
-import { createRequire } from 'module';
-const _require = createRequire(import.meta.url);
-const katexDist = _require.resolve('katex/dist/katex.min.js').replace(/katex\.min\.js$/, '');
-app.use('/katex', express.static(katexDist));
 
 app.use(express.static(CONFIG.publicDir));
 

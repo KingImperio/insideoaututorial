@@ -258,7 +258,7 @@ async function revealLesson(lesson, instant) {
   const body = $('lessonBody');
   body.innerHTML = '';
 
-  const blocks = parseSections(lesson.lesson_content);
+  const blocks = parseSections(lesson.lesson_content_html || lesson.lesson_content);
 
   const classroom = body.closest('.classroom') || body.parentElement;
 
@@ -270,8 +270,6 @@ async function revealLesson(lesson, instant) {
         appendCheckGate(body, block.text);
       }
     }
-    // Typeset after MathJax is ready (async script may still be loading)
-    typesetEl(body);
     return;
   }
 
@@ -301,9 +299,8 @@ function appendPara(container, text, animate) {
   const p = document.createElement('p');
   if (/^key takeaway:/i.test(text)) p.className = 'lesson-takeaway';
   if (animate) p.classList.add('para-reveal');
-  p.textContent = text;
+  p.innerHTML = text;
   container.appendChild(p);
-  if (animate) typesetEl(p);
 }
 
 //  Checkpoint gates 
@@ -325,7 +322,6 @@ function showCheckpointGate(container, question) {
     });
     container.appendChild(gate);
     gate.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    typesetEl(gate);
   });
 }
 
@@ -1729,16 +1725,16 @@ async function loadPastLesson(subject, department, day) {
       lessonEl.innerHTML = '<p style="color:var(--muted)">Lesson not found.</p>';
       return;
     }
-    const blocks = parseSections(lesson.lesson_content);
+    const blocks = parseSections(lesson.lesson_content_html || lesson.lesson_content);
     let html = `<div style="border-top:1px solid var(--brd);padding-top:1rem;">
       <h3 style="color:var(--white);margin:0 0 1rem;font-size:16px;font-weight:800;">Day ${lesson.day_number}: ${escapeHtml(lesson.topic || '')}</h3>`;
     for (const block of blocks) {
       if (block.type === 'section') {
         block.paragraphs.forEach((p) => {
-          html += `<p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0 0 0.8rem;">${escapeHtml(p)}</p>`;
+          html += `<p style="color:var(--muted);font-size:14px;line-height:1.75;margin:0 0 0.8rem;">${p}</p>`;
         });
       } else if (block.type === 'check') {
-        html += `<div style="background:var(--srf2,var(--srf));border:1px solid var(--brd);border-radius:8px;padding:12px;margin:12px 0;font-size:13px;color:var(--white);">📝 ${escapeHtml(block.text)}</div>`;
+        html += `<div style="background:var(--srf2,var(--srf));border:1px solid var(--brd);border-radius:8px;padding:12px;margin:12px 0;font-size:13px;color:var(--white);">📝 ${block.text}</div>`;
       }
     }
     html += '</div>';
