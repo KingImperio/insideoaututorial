@@ -26,11 +26,12 @@ export async function generateLesson(
     `You must NEVER use any specific university name anywhere in the lesson. ` +
     `Replace every such mention with "your institution", "Post-UTME institutions", or "universities" as appropriate. ` +
     `This lesson is for students applying to different schools — no single institution should be named.\n\n` +
-    `PARAGRAPH COUNT REQUIREMENT: This lesson must contain exactly 50 teaching paragraphs in total across ` +
-    `all four sections: Section 1 gets 12 paragraphs, Section 2 gets 15 paragraphs, Section 3 gets 12 ` +
-    `paragraphs, Section 4 gets 11 paragraphs. Count them as you write. Each paragraph must be focused, ` +
-    `substantive, and between 80 and 110 words. Do not write shorter filler paragraphs and do not ` +
-    `combine ideas that deserve their own paragraph. Every paragraph must earn its place.\n\n` +
+    `PARAGRAPH COUNT REQUIREMENT: This lesson must contain exactly 75 teaching paragraphs in total across ` +
+    `all four sections: Section 1 gets 18 paragraphs, Section 2 gets 22 paragraphs, Section 3 gets 18 ` +
+    `paragraphs, Section 4 gets 17 paragraphs. Count them as you write. Each paragraph must be focused ` +
+    `and concise, between 50 and 70 words. One idea per paragraph only. Do not pad, do not combine ` +
+    `multiple ideas into one paragraph, and do not write long sentences. Every paragraph must be ` +
+    `short enough to read aloud in about 20 seconds.\n\n` +
     `Use natural spoken language throughout as if talking directly and personally to the student. ` +
     `Address the student as "you" at all times. Use spoken transitions: "Now,", "Think about it this way,", ` +
     `"Here is something important,", "Let me show you,", "So,", "Here is the key,", "Notice this,". ` +

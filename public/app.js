@@ -279,8 +279,8 @@ async function revealLesson(lesson, instant) {
   for (const block of blocks) {
     if (block.type === 'section') {
       for (let i = 0; i < block.paragraphs.length; i++) {
-        // First paragraph of first section gets a short intro delay; all others 15 seconds
-        const delay = (block.num === 1 && i === 0) ? 1000 : 15000;
+        // First paragraph of first section gets a short intro delay; all others 25 seconds
+        const delay = (block.num === 1 && i === 0) ? 1000 : 25000;
         await sleep(delay);
         appendPara(body, block.paragraphs[i], true);
         body.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
